@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Request #{{ service_request.id }} - CSR Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2">
+        <div class="sidebar">
+            <div class="list-group mb-4">
+                <a href="{% url 'csr_dashboard' %}" class="list-group-item list-group-item-action">Dashboard</a>
+                <a href="{% url 'csr_request_list' %}" class="list-group-item list-group-item-action">All Requests</a>
+                <a href="{% url 'csr_request_list' %}?status=pending" class="list-group-item list-group-item-action">Pending Requests</a>
+                <a href="{% url 'csr_request_list' %}?priority=urgent" class="list-group-item list-group-item-action">Urgent Requests</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-10">
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'csr_dashboard' %}">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'csr_request_list' %}">Service Requests</a></li>
+                <li class="breadcrumb-item active">Request #{{ service_request.id }}</li>
+            </ol>
+        </nav>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Request Details -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Service Request Details</h5>
+                        <span class="badge bg-{% if service_request.status == 'pending' %}warning{% elif service_request.status == 'in_progress' %}info{% elif service_request.status == 'completed' %}success{% else %}secondary{% endif %} fs-6">
+                            {{ service_request.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <h4>{{ service_request.title }}</h4>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Request Type:</strong> {{ service_request.request_type.name }}</p>
+                                <p><strong>Priority:</strong> 
+                                    <span class="badge bg-{% if service_request.priority == 'urgent' %}danger{% elif service_request.priority == 'high' %}warning{% elif service_request.priority == 'medium' %}info{% else %}secondary{% endif %}">
+                                        {{ service_request.get_priority_display }}
+                                    </span>
+                                </p>
+                                <p><strong>Created:</strong> {{ service_request.created_at|date:"F d, Y H:i" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if service_request.assigned_to %}
+                                    <p><strong>Assigned To:</strong> {{ service_request.assigned_to.user.get_full_name }}</p>
+                                {% endif %}
+                                <p><strong>Last Updated:</strong> {{ service_request.updated_at|date:"F d, Y H:i" }}</p>
+                                {% if service_request.completed_at %}
+                                    <p><strong>Completed:</strong> {{ service_request.completed_at|date:"F d, Y H:i" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <h6>Description</h6>
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <p class="mb-0">{{ service_request.description|linebreaks }}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Update Form for CSRs -->
+                        <h6 class="mt-4">Update Request</h6>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-4">
+                                    {{ form.status|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.priority|as_crispy_field }}
+                                </div>
+                                <div class="col-md-4">
+                                    {{ form.assigned_to|as_crispy_field }}
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-3">
+                                <button type="submit" class="btn btn-primary">Update Request</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Attachments -->
+                {% if service_request.attachments.exists %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Attachments</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for attachment in service_request.attachments.all %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="fas fa-file me-2 text-primary"></i>
+                                            <h6 class="mb-0">{{ attachment.file.name|slice:"20:"|default:attachment.file.name }}</h6>
+                                        </div>
+                                        {% if attachment.description %}
+                                            <p class="text-muted small mb-2">{{ attachment.description }}</p>
+                                        {% endif %}
+                                        <p class="text-muted small mb-2">Uploaded: {{ attachment.uploaded_at|date:"M d, Y" }}</p>
+                                        <a href="{{ attachment.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="fas fa-download me-1"></i> Download
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Communication Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Communication</h5>
+                    </div>
+                    <div class="card-body d-flex flex-column" style="height: 400px;">
+                        <!-- Chat messages area with scrolling -->
+                        <div class="chat-messages flex-grow-1 overflow-auto mb-3" id="chatMessages">
+                            {% if comments %}
+                                {% for comment in comments|dictsortreversed:"created_at"|dictsort:"created_at" %}
+                                    <div class="chat-message mb-3 {% if comment.user == request.user %}text-end{% endif %}">
+                                        <div class="d-inline-block chat-bubble {% if comment.user.is_staff_member %}chat-bubble-staff{% else %}chat-bubble-customer{% endif %} p-3 rounded">
+                                            <div class="chat-header mb-1 small">
+                                                <strong>{{ comment.user.get_full_name|default:comment.user.username }}</strong>
+                                                <span class="badge {% if comment.user.is_staff_member %}bg-info{% else %}bg-primary{% endif %} ms-1">
+                                                    {{ comment.user.is_staff_member|yesno:"Staff,Customer" }}
+                                                </span>
+                                            </div>
+                                            <div class="chat-content">
+                                                {{ comment.text|linebreaks }}
+                                            </div>
+                                            <div class="chat-timestamp small text-muted text-end">
+                                                {{ comment.created_at|date:"M d, Y H:i" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-muted p-4">
+                                    <i class="fas fa-comments fa-3x mb-3"></i>
+                                    <p>No comments yet. Start the conversation!</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Comment input form fixed at bottom -->
+                        <div class="chat-input mt-auto">
+                            <form method="post" action="{% url 'add_comment' service_request.id %}" id="commentForm">
+                                {% csrf_token %}
+                                <div class="input-group">
+                                    {{ comment_form.text }}
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane"></i> Send
+                                    </button>
+                                </div>
+                                {% if comment_form.text.errors %}
+                                    <div class="text-danger small mt-1">{{ comment_form.text.errors }}</div>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <!-- Customer Info -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Customer Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Name:</strong> {{ service_request.customer.user.get_full_name }}</p>
+                        <p><strong>Account:</strong> {{ service_request.customer.account_number }}</p>
+                        <p><strong>Email:</strong> {{ service_request.customer.user.email }}</p>
+                        <p><strong>Phone:</strong> {{ service_request.customer.user.phone_number|default:"Not provided" }}</p>
+                        
+                        <h6 class="mt-3">Service Address</h6>
+                        <address>
+                            {{ service_request.customer.service_address }}<br>
+                            {{ service_request.customer.city }}, {{ service_request.customer.state }} {{ service_request.customer.zip_code }}
+                        </address>
+                    </div>
+                </div>
+                
+                <!-- Request Timeline -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Request Timeline</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="timeline">
+                            <li class="timeline-item mb-3">
+                                <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-0">Request Created</h6>
+                                    <p class="text-muted small mb-0">{{ service_request.created_at|date:"F d, Y H:i" }}</p>
+                                </div>
+                            </li>
+                            
+                            {% if service_request.status == 'in_progress' or service_request.status == 'completed' %}
+                            <li class="timeline-item mb-3">
+                                <div class="timeline-marker bg-info"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-0">In Progress</h6>
+                                    <p class="text-muted small mb-0">
+                                        {% if service_request.assigned_to %}
+                                        Assigned to {{ service_request.assigned_to.user.get_full_name }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </li>
+                            {% endif %}
+                            
+                            {% if service_request.status == 'completed' %}
+                            <li class="timeline-item">
+                                <div class="timeline-marker bg-success"></div>
+                                <div class="timeline-content">
+                                    <h6 class="mb-0">Request Completed</h6>
+                                    <p class="text-muted small mb-0">{{ service_request.completed_at|date:"F d, Y H:i" }}</p>
+                                </div>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Customer's Other Requests -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Customer's Other Requests</h5>
+                    </div>
+                    <div class="card-body">
+                        {% with other_requests=service_request.customer.service_requests.all|slice:":5" %}
+                            {% if other_requests.count > 1 %}
+                                <ul class="list-group">
+                                    {% for request in other_requests %}
+                                        {% if request != service_request %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <a href="{% url 'csr_request_detail' request.id %}">
+                                                        #{{ request.id }} - {{ request.title|truncatechars:30 }}
+                                                    </a>
+                                                    <br>
+                                                    <small class="text-muted">{{ request.created_at|date:"M d, Y" }}</small>
+                                                </div>
+                                                <span class="badge bg-{% if request.status == 'pending' %}warning{% elif request.status == 'in_progress' %}info{% elif request.status == 'completed' %}success{% else %}secondary{% endif %} rounded-pill">
+                                                    {{ request.get_status_display }}
+                                                </span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted">No other requests from this customer.</p>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* Chat styles */
+    .chat-messages {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-bubble {
+        max-width: 80%;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .chat-bubble-customer {
+        background-color: #dcf8c6;
+        border: 1px solid #c5e9b2;
+    }
+    
+    .chat-bubble-staff {
+        background-color: #e3f2fd;
+        border: 1px solid #c8e3fc;
+    }
+    
+    #id_text {
+        resize: none;
+        border-radius: 0.25rem 0 0 0.25rem;
+        height: 38px;
+    }
+    
+    /* Timeline styles */
+    .timeline {
+        position: relative;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        left: 0;
+        top: 6px;
+    }
+    
+    .timeline-content {
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Scroll to bottom of chat on load
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Submit comment form with Enter key, Shift+Enter for new line
+        const textarea = document.querySelector('#id_text');
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('commentForm').submit();
+            }
+        });
+        
+        // Auto-resize textarea as user types
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

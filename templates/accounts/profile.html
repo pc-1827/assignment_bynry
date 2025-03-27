@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile - Gas Utility Service{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-3">
+            <!-- Profile Sidebar -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <div class="avatar-circle mb-3">
+                        <span class="avatar-initials">{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}</span>
+                    </div>
+                    <h5>{{ user.get_full_name }}</h5>
+                    <p class="text-muted mb-1">
+                        {% if user.is_customer %}
+                            Customer
+                        {% elif user.is_staff_member %}
+                            Staff Member
+                        {% else %}
+                            User
+                        {% endif %}
+                    </p>
+                    <p class="text-muted mb-1">Member since {{ user.date_joined|date:"F Y" }}</p>
+                    <div class="d-grid gap-2 mt-3">
+                        <a href="{% url 'update_profile' %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit me-1"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="card mb-4">
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% if user.is_customer %}
+                            <a href="{% url 'customer_dashboard' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                            </a>
+                            <a href="{% url 'customer_request_list' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-clipboard-list me-2"></i> My Requests
+                            </a>
+                            <a href="{% url 'create_request' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-plus me-2"></i> New Request
+                            </a>
+                        {% elif user.is_staff_member %}
+                            <a href="{% url 'csr_dashboard' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                            </a>
+                            <a href="{% url 'csr_request_list' %}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-clipboard-list me-2"></i> Service Requests
+                            </a>
+                        {% endif %}
+                        <a href="{% url 'notifications' %}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-bell me-2"></i> Notifications
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <!-- Personal Information -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Personal Information</h5>
+                    <a href="{% url 'update_profile' %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Name:</strong> {{ user.get_full_name|default:"Not provided" }}</p>
+                            <p><strong>Username:</strong> {{ user.username }}</p>
+                            <p><strong>Email:</strong> {{ user.email|default:"Not provided" }}</p>
+                            <p><strong>Phone:</strong> {{ user.phone_number|default:"Not provided" }}</p>
+                        </div>
+                        
+                        {% if user.is_customer and user.customer_profile %}
+                        <div class="col-md-6">
+                            <p><strong>Account Number:</strong> {{ user.customer_profile.account_number }}</p>
+                        </div>
+                        {% elif user.is_staff_member and user.csr_profile %}
+                        <div class="col-md-6">
+                            <p><strong>Employee ID:</strong> {{ user.csr_profile.employee_id }}</p>
+                            <p><strong>Department:</strong> {{ user.csr_profile.department }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            {% if user.is_customer and user.customer_profile %}
+            <!-- Address Information -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Service Address</h5>
+                    <a href="{% url 'update_profile' %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                </div>
+                <div class="card-body">
+                    <p>{{ user.customer_profile.service_address }}</p>
+                    <p>{{ user.customer_profile.city }}, {{ user.customer_profile.state }} {{ user.customer_profile.zip_code }}</p>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    {% with recent_requests=user.customer_profile.service_requests.all|slice:":5" %}
+                        {% if recent_requests %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Request ID</th>
+                                            <th>Title</th>
+                                            <th>Status</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for request in recent_requests %}
+                                            <tr>
+                                                <td>#{{ request.id }}</td>
+                                                <td>
+                                                    <a href="{% url 'service_request_detail' request.id %}">
+                                                        {{ request.title }}
+                                                    </a>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-{% if request.status == 'pending' %}warning{% elif request.status == 'in_progress' %}info{% elif request.status == 'completed' %}success{% else %}secondary{% endif %}">
+                                                        {{ request.get_status_display }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ request.created_at|date:"M d, Y" }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No recent activity.</p>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avatar-circle {
+        width: 80px;
+        height: 80px;
+        background-color: #007bff;
+        border-radius: 50%;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+    
+    .avatar-initials {
+        font-size: 24px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
