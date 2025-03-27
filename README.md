@@ -2,6 +2,8 @@
 
 A Django application that allows customers to submit and track service requests for a gas utility company, and provides customer service representatives (CSRs) with tools to manage and respond to these requests.
 
+![home_page](images/image.png)
+
 ## Features
 
 - **Customer Portal**
@@ -51,7 +53,7 @@ assignment_bynry/
 ### Step 1: Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/pc-1827/assignment_bynry.git
 cd assignment_bynry
 ```
 
