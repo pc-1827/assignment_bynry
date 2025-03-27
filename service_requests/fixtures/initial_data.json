@@ -1,0 +1,56 @@
+[
+  {
+    "model": "service_requests.servicerequesttype",
+    "pk": 1,
+    "fields": {
+      "name": "Gas Leak",
+      "description": "Report a gas leak or strong gas odor in or near your property.",
+      "estimated_completion_days": 1
+    }
+  },
+  {
+    "model": "service_requests.servicerequesttype",
+    "pk": 2,
+    "fields": {
+      "name": "New Connection",
+      "description": "Request a new gas connection for your property.",
+      "estimated_completion_days": 5
+    }
+  },
+  {
+    "model": "service_requests.servicerequesttype",
+    "pk": 3,
+    "fields": {
+      "name": "Billing Issue",
+      "description": "Report a problem with your gas bill or payment.",
+      "estimated_completion_days": 3
+    }
+  },
+  {
+    "model": "service_requests.servicerequesttype",
+    "pk": 4,
+    "fields": {
+      "name": "Meter Reading",
+      "description": "Request a special meter reading or report an issue with your meter.",
+      "estimated_completion_days": 2
+    }
+  },
+  {
+    "model": "service_requests.servicerequesttype",
+    "pk": 5,
+    "fields": {
+      "name": "Service Interruption",
+      "description": "Report an interruption in your gas service.",
+      "estimated_completion_days": 1
+    }
+  },
+  {
+    "model": "service_requests.servicerequesttype",
+    "pk": 6,
+    "fields": {
+      "name": "Appliance Issues",
+      "description": "Report problems with gas appliances or request inspection.",
+      "estimated_completion_days": 3
+    }
+  }
+]
