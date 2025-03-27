@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=gas_utility_db
+    ports:
+      - "5432:5432"
+  
+  # Uncomment this section if you want to run the Django app in Docker too
+  # web:
+  #   build: .
+  #   command: python manage.py runserver 0.0.0.0:8000
+  #   volumes:
+  #     - .:/app
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:postgres@db:5432/gas_utility_db
+  #   depends_on:
+  #     - db
+
+volumes:
+  postgres_data:
